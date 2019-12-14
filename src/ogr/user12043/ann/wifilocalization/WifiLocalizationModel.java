@@ -3,12 +3,14 @@ package ogr.user12043.ann.wifilocalization;
 import org.neuroph.core.NeuralNetwork;
 import org.neuroph.core.data.DataSetRow;
 import org.neuroph.core.events.LearningEvent;
-import org.neuroph.core.learning.error.MeanAbsoluteError;
+import org.neuroph.core.learning.error.MeanSquaredError;
 import org.neuroph.nnet.MultiLayerPerceptron;
 import org.neuroph.nnet.learning.MomentumBackpropagation;
 import org.neuroph.util.TransferFunctionType;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created on 7.12.2019 - 23:01
@@ -17,17 +19,17 @@ import java.io.File;
  * @author user12043
  */
 class WifiLocalizationModel {
-    double[] errors;
+    List<Double> errors;
     private MomentumBackpropagation momentumBackpropagation;
 
     WifiLocalizationModel() {
         momentumBackpropagation = new MomentumBackpropagation();
         momentumBackpropagation.setMomentum(Constants.MOMENTUM);
         momentumBackpropagation.setLearningRate(Constants.LEARNING_RATE);
-        momentumBackpropagation.setErrorFunction(new MeanAbsoluteError());
+        momentumBackpropagation.setErrorFunction(new MeanSquaredError());
         momentumBackpropagation.setMaxIterations(Constants.MAX_ITERATIONS);
         momentumBackpropagation.setMaxError(Constants.MAX_ERROR);
-        errors = new double[Constants.MAX_ITERATIONS];
+        errors = new ArrayList<>();
     }
 
     void train() {
@@ -53,13 +55,12 @@ class WifiLocalizationModel {
         ann.getLearningRule().addListener(event -> {
             if (event.getEventType().compareTo(LearningEvent.EPOCH_ENDED) == 0) {
                 int current = ann.getLearningRule().getCurrentIteration();
-                errors[current - 1] = ann.getLearningRule().getPreviousEpochError();
-                System.out.println(ann.getLearningRule().getPreviousEpochError());
+                errors.add(current - 1, ann.getLearningRule().getTotalNetworkError());
+                System.out.println(ann.getLearningRule().getTotalNetworkError());
             }
         });
 
-        ann.learn(Data.getInstance().getTrainDataSet());
-
+        ann.learn(Utils.getTrainDataSet());
         ann.save(Constants.RESULT_FILE_NAME);
         System.out.println("TRAIN END");
     }
@@ -70,12 +71,21 @@ class WifiLocalizationModel {
             System.err.println("Train first!");
             return;
         }
+
+        int totalErrorResults = 0;
+
         //noinspection rawtypes
         NeuralNetwork network = NeuralNetwork.createFromFile(Constants.RESULT_FILE_NAME);
-        for (DataSetRow row : Data.getInstance().getTestDataSet()) {
+        for (DataSetRow row : Utils.getTestDataSet()) {
             network.setInput(row.getInput());
             network.calculate();
-            System.out.println(Utils.getOutput(Utils.round(network.getOutput())) + ", " + Utils.getOutput(row.getDesiredOutput()));
+            int output = Utils.getOutput(Utils.round(network.getOutput()));
+            int desired = Utils.getOutput(row.getDesiredOutput());
+            if (output != desired) {
+                System.out.println(output + ", " + desired);
+                totalErrorResults++;
+            }
         }
+        System.out.println("Total: " + totalErrorResults);
     }
 }

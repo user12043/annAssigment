@@ -6,8 +6,9 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.InputMismatchException;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created on 8.12.2019 - 08:54
@@ -18,6 +19,9 @@ import java.util.InputMismatchException;
 class Utils {
     private static double[] minimums;
     private static double[] maximums;
+    private static List<Integer> testIndices;
+    private static DataSet trainDataSet;
+    private static DataSet testDataSet;
 
     private static double minMax(double max, double min, double val) {
         return (val - min) / (max - min);
@@ -53,30 +57,57 @@ class Utils {
                 });
     }
 
-    static DataSet loadDataSet(String fileName) throws IOException {
+    private static void updateTestIndices(int recordsSize) {
+        int amountOfTestData = recordsSize * Constants.TEST_DATA_PERCENT / 100;
+
+        // create ordered number list
+        if (testIndices == null) {
+            testIndices = new ArrayList<>();
+            for (int i = 0; i < amountOfTestData; i++) {
+                testIndices.add(i, i);
+            }
+        }
+        Collections.shuffle(testIndices);
+    }
+
+    static void loadDataSet() throws IOException {
+        trainDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
+        testDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
+
         updateMinMax();
 
-        DataSet dataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
-        BufferedReader reader = new BufferedReader(new FileReader(fileName));
-        reader.lines().map(line -> Arrays.asList(line.split(Constants.DATA_SEPARATOR))).forEach(columnsString -> {
-            if (columnsString.size() != Constants.INPUTS_NUMBER + Constants.OUTPUTS_NUMBER) {
-                throw new InputMismatchException("Invalid data format!");
+        BufferedReader reader = new BufferedReader(new FileReader(Constants.DATA_FILE_NAME));
+
+        List<String> collect = reader.lines().collect(Collectors.toList());
+
+
+        // the dataset file contains same number of records for each output value (1, 2, 3, 4)
+        int recordPerOutput = collect.size() / Constants.OUTPUTS_NUMBER; // equal to 500
+        updateTestIndices(recordPerOutput);
+
+        IntStream.range(0, Constants.OUTPUTS_NUMBER).forEach(currentOutput -> IntStream.range(0, recordPerOutput).forEach(currentLine -> {
+            List<String> columns = Arrays.asList(collect.get(currentLine + (recordPerOutput * currentOutput)).split(Constants.DATA_SEPARATOR));
+
+            // check number of columns
+            if (columns.size() != Constants.INPUTS_NUMBER + Constants.OUTPUTS_NUMBER) {
+                throw new InputMismatchException("Invalid data format! At line: " + currentLine + (currentOutput * recordPerOutput));
             }
 
             // inputs
-            double[] inputs = columnsString.subList(0, Constants.INPUTS_NUMBER).stream().mapToDouble(Double::parseDouble).toArray();
-            for (int i = 0; i < inputs.length; i++) {
-                inputs[i] = minMax(maximums[i], minimums[i], inputs[i]);
+            double[] inputs = columns.subList(0, Constants.INPUTS_NUMBER).stream().mapToDouble(Double::parseDouble).toArray();
+            for (int a = 0; a < inputs.length; a++) {
+                inputs[a] = minMax(maximums[a], minimums[a], inputs[a]);
             }
 
-            //outputs
-            double[] outputs = columnsString.subList(Constants.INPUTS_NUMBER, columnsString.size()).stream().mapToDouble(Double::parseDouble).toArray();
-
-            // add values
-            dataSet.add(inputs, outputs);
-        });
+            // outputs
+            double[] outputs = columns.subList(Constants.INPUTS_NUMBER, columns.size()).stream().mapToDouble(Double::parseDouble).toArray();
+            if (!testIndices.contains(currentLine)) {
+                trainDataSet.add(inputs, outputs);
+            } else {
+                testDataSet.add(inputs, outputs);
+            }
+        }));
         reader.close();
-        return dataSet;
     }
 
     static int getOutput(double[] output) {
@@ -85,10 +116,19 @@ class Utils {
                 return i + 1;
             }
         }
+//        System.out.println("-1 for " + Arrays.toString(output));
         return -1;
     }
 
     static double[] round(double[] doubles) {
         return Arrays.stream(doubles).map(Math::round).toArray();
+    }
+
+    public static DataSet getTrainDataSet() {
+        return trainDataSet;
+    }
+
+    public static DataSet getTestDataSet() {
+        return testDataSet;
     }
 }

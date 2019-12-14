@@ -8,14 +8,12 @@ package ogr.user12043.ann.wifilocalization;
  */
 public interface Constants {
     String DATA_FILE_NAME = "data/wifi_localization.txt";
-    String TRAIN_FILE_NAME = "data/wifi_localization_train.txt";
-    String TEST_FILE_NAME = "data/wifi_localization_test.txt";
     String RESULT_FILE_NAME = "data/wifi_localization_result.nnet";
     int INPUTS_NUMBER = 7;
     int OUTPUTS_NUMBER = 4;
     String DATA_SEPARATOR = "\\s";
     int TEST_DATA_PERCENT = 30;
-    int HIDDEN_LAYERS_NUMBER = 15;
+    int HIDDEN_LAYERS_NUMBER = 5;
     double MOMENTUM = 0.9;
     double LEARNING_RATE = 0.1;
     double MAX_ERROR = 0.0000001;
