@@ -2,7 +2,10 @@ package ogr.user12043.ann.wifilocalization;
 
 import org.neuroph.core.data.DataSet;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -128,7 +131,7 @@ class Utils {
 
     static void writeErrorLog(List<Double> errors) {
         try {
-            OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(Constants.TRAIN_ERROR_LOG_FILE_NAME));
+            FileWriter writer = new FileWriter(Constants.TRAIN_ERROR_LOG_FILE_NAME, false);
             for (Double error : errors) {
                 writer.write(error + "\n");
             }

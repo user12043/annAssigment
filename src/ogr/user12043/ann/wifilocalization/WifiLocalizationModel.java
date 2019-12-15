@@ -21,24 +21,28 @@ import java.util.List;
  */
 class WifiLocalizationModel {
     List<Double> errors;
-    private MomentumBackpropagation momentumBackpropagation;
 
     WifiLocalizationModel() {
-        momentumBackpropagation = new MomentumBackpropagation();
+        errors = new ArrayList<>();
+    }
+
+    private MomentumBackpropagation getMomentumBackpropagation() {
+        MomentumBackpropagation momentumBackpropagation = new MomentumBackpropagation();
         momentumBackpropagation.setMomentum(Constants.MOMENTUM);
         momentumBackpropagation.setLearningRate(Constants.LEARNING_RATE);
         momentumBackpropagation.setErrorFunction(new MeanSquaredError());
         momentumBackpropagation.setMaxIterations(Constants.MAX_ITERATIONS);
         momentumBackpropagation.setMaxError(Constants.MAX_ERROR);
-        errors = new ArrayList<>();
+        return momentumBackpropagation;
     }
 
     void train() {
         Utils.loadDataSet();
+        errors.clear();
 
         System.out.println("TRAIN START");
         MultiLayerPerceptron ann = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, Constants.INPUTS_NUMBER, Constants.HIDDEN_LAYERS_NUMBER, Constants.OUTPUTS_NUMBER);
-        ann.setLearningRule(momentumBackpropagation);
+        ann.setLearningRule(getMomentumBackpropagation());
 
         // produces NullPointerException
         /*IntStream.range(0, Constants.MAX_ITERATIONS).forEach(i -> {
