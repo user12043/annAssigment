@@ -2,9 +2,7 @@ package ogr.user12043.ann.wifilocalization;
 
 import org.neuroph.core.data.DataSet;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -22,14 +20,22 @@ class Utils {
     private static DataSet trainDataSet;
     private static DataSet testDataSet;
 
-    private static double minMax(double max, double min, double val) {
+    private static double normalize(double max, double min, double val) {
         return (val - min) / (max - min);
+    }
+
+    static double[] normalize(double[] inputs) {
+        double[] normalized = new double[Constants.INPUTS_NUMBER];
+        for (int i = 0; i < inputs.length; i++) {
+            normalized[i] = normalize(maximums[i], minimums[i], inputs[i]);
+        }
+        return normalized;
     }
 
     /**
      * Set max and min of wifi signal strength (-30 to -100)
      */
-    private static void updateMinMax() {
+    static void updateMinMax() {
         maximums = new double[Constants.INPUTS_NUMBER];
         maximums = Arrays.stream(maximums).map(v -> Constants.MAX_SIGNAL_STRENGTH).toArray();
         minimums = new double[Constants.INPUTS_NUMBER];
@@ -75,7 +81,7 @@ class Utils {
                 // inputs
                 double[] inputs = columns.subList(0, Constants.INPUTS_NUMBER).stream().mapToDouble(Double::parseDouble).toArray();
                 for (int a = 0; a < inputs.length; a++) {
-                    inputs[a] = minMax(maximums[a], minimums[a], inputs[a]);
+                    inputs[a] = normalize(maximums[a], minimums[a], inputs[a]);
                 }
 
                 // outputs
@@ -120,4 +126,15 @@ class Utils {
         return testDataSet;
     }
 
+    static void writeErrorLog(List<Double> errors) {
+        try {
+            OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(Constants.TRAIN_ERROR_LOG_FILE_NAME));
+            for (Double error : errors) {
+                writer.write(error + "\n");
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

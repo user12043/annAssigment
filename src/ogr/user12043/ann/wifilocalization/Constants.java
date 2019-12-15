@@ -9,6 +9,7 @@ package ogr.user12043.ann.wifilocalization;
 public interface Constants {
     String DATA_FILE_NAME = "data/wifi_localization.txt";
     String RESULT_FILE_NAME = "data/wifi_localization_result.nnet";
+    String TRAIN_ERROR_LOG_FILE_NAME = "data/train_error_log.log";
     int INPUTS_NUMBER = 7;
     int OUTPUTS_NUMBER = 4;
     String DATA_SEPARATOR = "\\s";

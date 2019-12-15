@@ -65,6 +65,7 @@ class WifiLocalizationModel {
 
         ann.learn(Utils.getTrainDataSet());
         ann.save(Constants.RESULT_FILE_NAME);
+        Utils.writeErrorLog(errors);
         System.out.println("TRAIN END");
         System.out.println("Son hata = " + ann.getLearningRule().getTotalNetworkError());
     }

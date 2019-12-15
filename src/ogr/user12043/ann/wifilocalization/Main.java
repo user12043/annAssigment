@@ -27,7 +27,11 @@ public class Main {
                         model.test();
                         break;
                     case 3:
+                        Utils.updateMinMax();
                         double[] inputs = getInputs(scanner);
+                        // max min
+                        inputs = Utils.normalize(inputs);
+
                         int result = model.testSingle(inputs);
                         System.out.println("Sonuç: Oda " + result);
                         break;
