@@ -3,6 +3,7 @@ package ogr.user12043.ann.wifilocalization;
 import org.neuroph.core.NeuralNetwork;
 import org.neuroph.core.data.DataSetRow;
 import org.neuroph.core.events.LearningEvent;
+import org.neuroph.core.learning.error.MeanAbsoluteError;
 import org.neuroph.core.learning.error.MeanSquaredError;
 import org.neuroph.nnet.MultiLayerPerceptron;
 import org.neuroph.nnet.learning.MomentumBackpropagation;
@@ -33,6 +34,8 @@ class WifiLocalizationModel {
     }
 
     void train() {
+        Utils.loadDataSet();
+
         System.out.println("TRAIN START");
         MultiLayerPerceptron ann = new MultiLayerPerceptron(TransferFunctionType.SIGMOID, Constants.INPUTS_NUMBER, Constants.HIDDEN_LAYERS_NUMBER, Constants.OUTPUTS_NUMBER);
         ann.setLearningRule(momentumBackpropagation);
@@ -56,13 +59,14 @@ class WifiLocalizationModel {
             if (event.getEventType().compareTo(LearningEvent.EPOCH_ENDED) == 0) {
                 int current = ann.getLearningRule().getCurrentIteration();
                 errors.add(current - 1, ann.getLearningRule().getTotalNetworkError());
-                System.out.println(ann.getLearningRule().getTotalNetworkError());
+//                System.out.println(ann.getLearningRule().getTotalNetworkError());
             }
         });
 
         ann.learn(Utils.getTrainDataSet());
         ann.save(Constants.RESULT_FILE_NAME);
         System.out.println("TRAIN END");
+        System.out.println("Son hata = " + ann.getLearningRule().getTotalNetworkError());
     }
 
     void test() {
@@ -76,16 +80,35 @@ class WifiLocalizationModel {
 
         //noinspection rawtypes
         NeuralNetwork network = NeuralNetwork.createFromFile(Constants.RESULT_FILE_NAME);
+        MeanAbsoluteError meanAbsoluteError = new MeanAbsoluteError();
+
         for (DataSetRow row : Utils.getTestDataSet()) {
             network.setInput(row.getInput());
             network.calculate();
             int output = Utils.getOutput(Utils.round(network.getOutput()));
             int desired = Utils.getOutput(row.getDesiredOutput());
             if (output != desired) {
-                System.out.println(output + ", " + desired);
+//                System.out.println(output + ", " + desired);
                 totalErrorResults++;
             }
+            meanAbsoluteError.addPatternError(network.getOutput(), row.getDesiredOutput());
+//            testErrorSum += meanAbsoluteError.getTotalError();
         }
-        System.out.println("Total: " + totalErrorResults);
+        System.out.println("Toplam hatalı kayıt: " + totalErrorResults);
+        System.out.println("Ortalama hata: " + meanAbsoluteError.getTotalError() / Utils.getTestDataSet().size());
+    }
+
+    int testSingle(double[] inputs) {
+        File file = new File(Constants.RESULT_FILE_NAME);
+        if (!file.exists()) {
+            System.err.println("Train first!");
+            return 0;
+        }
+
+        //noinspection rawtypes
+        NeuralNetwork network = NeuralNetwork.createFromFile(Constants.RESULT_FILE_NAME);
+        network.setInput(inputs);
+        network.calculate();
+        return Utils.getOutput(Utils.round(network.getOutput()));
     }
 }

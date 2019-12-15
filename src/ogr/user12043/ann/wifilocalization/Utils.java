@@ -3,7 +3,6 @@ package ogr.user12043.ann.wifilocalization;
 import org.neuroph.core.data.DataSet;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
@@ -28,33 +27,13 @@ class Utils {
     }
 
     /**
-     * Reads all data and calculate minimum and maximum of each input
+     * Set max and min of wifi signal strength (-30 to -100)
      */
-    private static void updateMinMax() throws FileNotFoundException {
+    private static void updateMinMax() {
         maximums = new double[Constants.INPUTS_NUMBER];
-        maximums = Arrays.stream(maximums).map(v -> Double.MIN_VALUE).toArray();
+        maximums = Arrays.stream(maximums).map(v -> Constants.MAX_SIGNAL_STRENGTH).toArray();
         minimums = new double[Constants.INPUTS_NUMBER];
-        minimums = Arrays.stream(minimums).map(v -> Double.MAX_VALUE).toArray();
-
-        BufferedReader reader = new BufferedReader(new FileReader(Constants.DATA_FILE_NAME));
-        reader.lines()
-                // iterate over all lines as list
-                .map(line -> Arrays.asList(line.split(Constants.DATA_SEPARATOR)))
-                // get inputs array
-                .map(columnsString -> columnsString.subList(0, Constants.INPUTS_NUMBER)
-                        .stream().mapToDouble(Double::parseDouble).toArray())
-                // do max min process
-                .forEach(inputs -> {
-                    for (int i = 0; i < inputs.length; i++) {
-                        if (inputs[i] > maximums[i]) {
-                            maximums[i] = inputs[i];
-                        }
-
-                        if (inputs[i] < minimums[i]) {
-                            minimums[i] = inputs[i];
-                        }
-                    }
-                });
+        minimums = Arrays.stream(minimums).map(v -> Constants.MIN_SIGNAL_STRENGTH).toArray();
     }
 
     private static void updateTestIndices(int recordsSize) {
@@ -70,44 +49,50 @@ class Utils {
         Collections.shuffle(testIndices);
     }
 
-    static void loadDataSet() throws IOException {
-        trainDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
-        testDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
+    static void loadDataSet() {
+        try {
+            trainDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
+            testDataSet = new DataSet(Constants.INPUTS_NUMBER, Constants.OUTPUTS_NUMBER);
 
-        updateMinMax();
+            updateMinMax();
 
-        BufferedReader reader = new BufferedReader(new FileReader(Constants.DATA_FILE_NAME));
+            BufferedReader reader = new BufferedReader(new FileReader(Constants.DATA_FILE_NAME));
 
-        List<String> collect = reader.lines().collect(Collectors.toList());
+            List<String> collect = reader.lines().collect(Collectors.toList());
 
+            // the dataset file contains same number of records for each output value (1, 2, 3, 4)
+            int recordPerOutput = collect.size() / Constants.OUTPUTS_NUMBER; // equal to 500
+            updateTestIndices(recordPerOutput);
 
-        // the dataset file contains same number of records for each output value (1, 2, 3, 4)
-        int recordPerOutput = collect.size() / Constants.OUTPUTS_NUMBER; // equal to 500
-        updateTestIndices(recordPerOutput);
+            IntStream.range(0, Constants.OUTPUTS_NUMBER).forEach(currentOutput -> IntStream.range(0, recordPerOutput).forEach(currentLine -> {
+                List<String> columns = Arrays.asList(collect.get(currentLine + (recordPerOutput * currentOutput)).split(Constants.DATA_SEPARATOR));
 
-        IntStream.range(0, Constants.OUTPUTS_NUMBER).forEach(currentOutput -> IntStream.range(0, recordPerOutput).forEach(currentLine -> {
-            List<String> columns = Arrays.asList(collect.get(currentLine + (recordPerOutput * currentOutput)).split(Constants.DATA_SEPARATOR));
+                // check number of columns
+                if (columns.size() != Constants.INPUTS_NUMBER + Constants.OUTPUTS_NUMBER) {
+                    throw new InputMismatchException("Invalid data format! At line: " + currentLine + (currentOutput * recordPerOutput));
+                }
 
-            // check number of columns
-            if (columns.size() != Constants.INPUTS_NUMBER + Constants.OUTPUTS_NUMBER) {
-                throw new InputMismatchException("Invalid data format! At line: " + currentLine + (currentOutput * recordPerOutput));
-            }
+                // inputs
+                double[] inputs = columns.subList(0, Constants.INPUTS_NUMBER).stream().mapToDouble(Double::parseDouble).toArray();
+                for (int a = 0; a < inputs.length; a++) {
+                    inputs[a] = minMax(maximums[a], minimums[a], inputs[a]);
+                }
 
-            // inputs
-            double[] inputs = columns.subList(0, Constants.INPUTS_NUMBER).stream().mapToDouble(Double::parseDouble).toArray();
-            for (int a = 0; a < inputs.length; a++) {
-                inputs[a] = minMax(maximums[a], minimums[a], inputs[a]);
-            }
+                // outputs
+                double[] outputs = columns.subList(Constants.INPUTS_NUMBER, columns.size()).stream().mapToDouble(Double::parseDouble).toArray();
 
-            // outputs
-            double[] outputs = columns.subList(Constants.INPUTS_NUMBER, columns.size()).stream().mapToDouble(Double::parseDouble).toArray();
-            if (!testIndices.contains(currentLine)) {
-                trainDataSet.add(inputs, outputs);
-            } else {
-                testDataSet.add(inputs, outputs);
-            }
-        }));
-        reader.close();
+                // add
+                if (!testIndices.contains(currentLine)) {
+                    trainDataSet.add(inputs, outputs);
+                } else {
+                    testDataSet.add(inputs, outputs);
+                }
+            }));
+            reader.close();
+        } catch (IOException e) {
+            System.err.println("An error occurred while loading dataset:");
+            e.printStackTrace();
+        }
     }
 
     static int getOutput(double[] output) {
@@ -129,6 +114,10 @@ class Utils {
     }
 
     public static DataSet getTestDataSet() {
+        if (testDataSet == null) {
+            loadDataSet();
+        }
         return testDataSet;
     }
+
 }

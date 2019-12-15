@@ -18,4 +18,6 @@ public interface Constants {
     double LEARNING_RATE = 0.1;
     double MAX_ERROR = 0.0000001;
     int MAX_ITERATIONS = 300;
+    int MAX_SIGNAL_STRENGTH = -30;
+    int MIN_SIGNAL_STRENGTH = -100;
 }
